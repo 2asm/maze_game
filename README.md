@@ -11,7 +11,6 @@ func main() {
 ```
 ``` Console
 $ go run main.go
-Output: 
-![alt text](https://github.com/2asm/maze_game/blob/master/maze_game_output.png)
 ``` 
+Output:
 ![alt text](https://github.com/2asm/maze_game/blob/master/maze_game_output.png)
