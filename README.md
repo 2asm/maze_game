@@ -13,7 +13,7 @@ func main() {
 $ go run main.go
 Output: 
 ``` 
-![alt text](https://github.com/2asm/maze_game/maze_game_output.png)
+![alt text](https://github.com/2asm/maze_game/blob/master/maze_game_output.png)
 ``` Console
 [Process exited 0]
 ```
