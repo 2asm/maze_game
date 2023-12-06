@@ -1,5 +1,5 @@
 # Maze_Game 
-Generator API based on randomized DFS
+Maze generator API based on randomized DFS algorithm
 
 ## Quick start
 ```Golang
