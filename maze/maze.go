@@ -42,7 +42,7 @@ func NewMaze(n int, m int) *maze {
 	ret.style()
 	grid[0][0].Set("innerText", string(ret.runner.emoji))
 	grid[0][0].Get("style").Set("color", "grey")
-	grid[ret.height-1][ret.width-1].Set("innerText", direction(0).String())
+	grid[ret.height-1][ret.width-1].Set("innerText", "💻")
 	grid[ret.height-1][ret.width-1].Get("style").Set("color", "green")
 	return ret
 }
@@ -71,7 +71,9 @@ func (m *maze) Start() {
 			grid[c.x][c.y].Set("innerText", string(m.runner.emoji))
 			grid[c.x][c.y].Get("style").Set("color", "grey")
 			if c.x == m.height-1 && c.y == m.width-1 {
-				grid[c.x][c.y].Set("innerText", string(m.runner.winning_emoji))
+				x := "🧑‍💻"
+				// grid[c.x][c.y].Set("innerText", string(m.runner.winning_emoji))
+				grid[c.x][c.y].Set("innerText", x)
 				m.isOver = true
 			}
 		default:

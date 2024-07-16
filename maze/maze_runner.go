@@ -8,7 +8,8 @@ type mazeRunner struct {
 }
 
 func newMazeRunner(c coord) mazeRunner {
-	return mazeRunner{pos: c, emoji: '🙂', winning_emoji: '😀'}
+	return mazeRunner{pos: c, emoji: '🧑', winning_emoji: '😀',}
+
 }
 
 func (r *mazeRunner) move(d direction) {
