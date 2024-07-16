@@ -205,17 +205,17 @@ func (m *maze) init() {
 func (m *maze) style() {
 	for i := range m.height {
 		for j := range m.width {
-			str := "border: 0.2em solid black;"
+			str := "border: 0.1em solid black;"
 			for _, d := range m.cell[i][j] {
 				switch d {
 				case _LEFT:
-					str += "border-left: 0.2em solid #ddd;"
+					str += "border-left: 0.1em solid #ddd;"
 				case _RIGHT:
-					str += "border-right: 0.2em solid #ddd;"
+					str += "border-right: 0.1em solid #ddd;"
 				case _UP:
-					str += "border-top: 0.2em solid #ddd;"
+					str += "border-top: 0.1em solid #ddd;"
 				case _DOWN:
-					str += "border-bottom: 0.2em solid #ddd;"
+					str += "border-bottom: 0.1em solid #ddd;"
 				}
 			}
 			grid[i][j].Call("setAttribute", "style", str)
