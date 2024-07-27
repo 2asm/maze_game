@@ -5,53 +5,50 @@ package maze
 import (
 	"fmt"
 	"math/rand"
-	"strconv"
-	"strings"
 	"syscall/js"
 	"time"
 )
 
 type maze struct {
-	height int
-	width  int
-	cell   [][][]direction
-	runner mazeRunner
-	isOver bool
+	height, width int
+	scale         int // pixel size
+	cell          [][][]direction
+	runner        mazeRunner
+	isOver        bool
 }
 
 func (m maze) outOfMaze(c coord) bool {
 	return c.x < 0 || c.x >= m.height || c.y < 0 || c.y >= m.width
 }
 
-func NewMaze(n int, m int) *maze {
-	_maze := make([][][]direction, n)
-	for i := range n {
-		_maze[i] = make([][]direction, m)
+func NewMaze(height, width, scale int) *maze {
+	_maze := make([][][]direction, height)
+	for i := range height {
+		_maze[i] = make([][]direction, width)
 	}
 	ret := &maze{
-		height: n,
-		width:  m,
+		height: height,
+		width:  width,
+		scale:  scale,
 		cell:   _maze,
 		runner: newMazeRunner(coord{0, 0}),
 	}
 	ret.fillMaze()
-	if !INIT {
-		INIT = true
-		ret.init()
-	}
-	ret.style()
-	grid[0][0].Set("innerText", string(ret.runner.emoji))
-	grid[0][0].Get("style").Set("color", "grey")
-	grid[ret.height-1][ret.width-1].Set("innerText", "💻")
-	grid[ret.height-1][ret.width-1].Get("style").Set("color", "green")
+	ret.init()
+	ret.setAllBorders()
+	ret.fillTextCell(0, 0, ret.runner.emoji)
+	ret.clearCell(ret.height-1, ret.width-1)
+	ret.fillTextCell(ret.height-1, ret.width-1, "💻")
 	return ret
 }
 
 func (m *maze) Start() {
+	go m.listenForArrowKeys()
 	for {
 		select {
 		case <-restartChan:
-			m = NewMaze(m.height, m.width)
+			m.clearAll()
+			m = NewMaze(m.height, m.width, m.scale)
 		case d := <-moveChan:
 			if m.isOver {
 				continue
@@ -59,27 +56,27 @@ func (m *maze) Start() {
 			c := m.runner.pos
 			for _, di := range m.cell[c.x][c.y] {
 				if di == d {
+					m.clearCell(c.x, c.y)
 					m.runner.move(d)
 					break
 				}
 			}
-			grid[c.x][c.y].Set("innerText", direction(0).String())
-			// grid[c.x][c.y].Get("style").Set("color", "transparent")
-
 			c = m.runner.pos
-
-			grid[c.x][c.y].Set("innerText", string(m.runner.emoji))
-			grid[c.x][c.y].Get("style").Set("color", "grey")
-			if c.x == m.height-1 && c.y == m.width-1 {
-				x := "🧑‍💻"
-				// grid[c.x][c.y].Set("innerText", string(m.runner.winning_emoji))
-				grid[c.x][c.y].Set("innerText", x)
+			if m.won() {
 				m.isOver = true
+				m.clearCell(c.x, c.y)
+				m.fillTextCell(c.x, c.y, m.runner.winning_emoji)
+			} else {
+				m.fillTextCell(c.x, c.y, m.runner.emoji)
 			}
 		default:
 			time.Sleep(time.Millisecond * 50)
 		}
 	}
+}
+
+func (m *maze) won() bool {
+	return m.runner.pos.x == m.height-1 && m.runner.pos.y == m.width-1
 }
 
 // maze creation logic
@@ -120,107 +117,125 @@ func (m *maze) fillMaze() {
 	dfs(0, 0, 0)
 }
 
+func (m *maze) listenForArrowKeys() {
+	for {
+		switch {
+		case keyDownState[_LEFT]:
+			moveChan <- _LEFT
+		case keyDownState[_UP]:
+			moveChan <- _UP
+		case keyDownState[_RIGHT]:
+			moveChan <- _RIGHT
+		case keyDownState[_DOWN]:
+			moveChan <- _DOWN
+		}
+		time.Sleep(time.Millisecond * 40)
+	}
+}
+
 var (
-	grid         = make([][]js.Value, 0)
-	INIT         bool
-	restart      js.Value
+	_INIT        bool
+	mazeCanvas   js.Value
 	moveChan     = make(chan direction)
 	restartChan  = make(chan struct{})
-	idToCoordMap = map[string]coord{}
-	keyState     = map[string]bool{}
+	wallSize     int
+	keyDownState = []bool{
+		_LEFT:  false,
+		_UP:    false,
+		_RIGHT: false,
+		_DOWN:  false,
+	}
 )
 
-func (m *maze) coordToId(c coord) string {
-	return fmt.Sprintf("%v-%v", c.x, c.y)
-}
-
-func (m *maze) idToCoord(id string) coord {
-	if c, ok := idToCoordMap[id]; ok {
-		return c
-	}
-	parts := strings.Split(id, "-")
-	x, err := strconv.Atoi(parts[0])
-	if err != nil {
-		panic("atoi")
-	}
-	y, err := strconv.Atoi(parts[0])
-	if err != nil {
-		panic("atoi")
-	}
-	out := coord{x, y}
-	idToCoordMap[id] = out
-	return out
-}
-
 func (m *maze) init() {
-	for i := range m.height {
-		gi := []js.Value{}
-		for j := range m.width {
-			e := js.Global().Get("document").Call("getElementById", m.coordToId(coord{i, j}))
-			gi = append(gi, e)
-		}
-		grid = append(grid, gi)
+	if _INIT {
+		return
 	}
+	_INIT = true
+	// todo: change scale accoding to resolution
 
-	restart = js.Global().Get("document").Call("getElementById", "restart")
+	scl := m.scale / 10
+	scl += scl % 2
+	wallSize = max(4, m.scale/10)
+	wallSize = 4 // testing
 
-	restart.Call("addEventListener", "click", js.FuncOf(func(this js.Value, args []js.Value) any {
-		restartChan <- struct{}{}
-		return nil
-	}))
+	c := js.Global().Get("document").Call("getElementById", "mazeCanvas")
+	c.Set("height", m.scale*m.height)
+	c.Set("width", m.scale*m.width)
+	mazeCanvas = c.Call("getContext", "2d")
 
 	js.Global().Get("document").Call("addEventListener", "keydown", js.FuncOf(func(this js.Value, args []js.Value) any {
-		key := args[0].Get("key").String()
-		keyState[key] = true
-		if key == "r" || key == "R" {
+		keyCode := args[0].Get("keyCode").Int()
+		switch keyCode {
+		case 37, 38, 39, 40:
+			keyDownState[keyCode-37+1] = true
+		case 82: // r
 			restartChan <- struct{}{}
-			return nil
 		}
-		go func() {
-		top:
-			for keyState[key] {
-				switch key {
-				case "ArrowUp":
-					moveChan <- _UP
-				case "ArrowDown":
-					moveChan <- _DOWN
-				case "ArrowLeft":
-					moveChan <- _LEFT
-				case "ArrowRight":
-					moveChan <- _RIGHT
-				default:
-					break top
-				}
-				time.Sleep(time.Millisecond * 60)
-			}
-		}()
 		return nil
 	}))
 
 	js.Global().Get("document").Call("addEventListener", "keyup", js.FuncOf(func(this js.Value, args []js.Value) any {
-		key := args[0].Get("key").String()
-		keyState[key] = false
+		keyCode := args[0].Get("keyCode").Int()
+		switch keyCode {
+		case 37, 38, 39, 40:
+			keyDownState[keyCode-37+1] = false
+		}
 		return nil
 	}))
 }
 
-func (m *maze) style() {
-	for i := range m.height {
-		for j := range m.width {
-			str := "border: 0.1em solid black;"
-			for _, d := range m.cell[i][j] {
-				switch d {
-				case _LEFT:
-					str += "border-left: 0.1em solid #ddd;"
-				case _RIGHT:
-					str += "border-right: 0.1em solid #ddd;"
-				case _UP:
-					str += "border-top: 0.1em solid #ddd;"
-				case _DOWN:
-					str += "border-bottom: 0.1em solid #ddd;"
-				}
-			}
-			grid[i][j].Call("setAttribute", "style", str)
+func (m *maze) clearAll() {
+	for x := range m.height {
+		for y := range m.width {
+			mazeCanvas.Call("clearRect", y*m.scale, x*m.scale, m.scale, m.scale)
 		}
 	}
+}
+
+func (m *maze) setAllBorders() {
+	mazeCanvas.Set("fillStyle", "black")
+	for x := range m.height + 1 {
+		mazeCanvas.Call("fillRect", 0, x*m.scale-wallSize/2, m.width*m.scale, wallSize)
+	}
+	for y := range m.width + 1 {
+		mazeCanvas.Call("fillRect", y*m.scale-wallSize/2, 0, wallSize, m.height*m.scale)
+	}
+	mazeCanvas.Call("fill")
+	m.clearPaths()
+}
+
+func (m *maze) clearPaths() {
+	for x := range m.height {
+		for y := range m.width {
+			for _, d := range m.cell[x][y] {
+				m.clearBorder(x, y, d)
+			}
+		}
+	}
+}
+
+func (m *maze) clearBorder(x, y int, d direction) {
+	switch d {
+	case _LEFT:
+		mazeCanvas.Call("clearRect", y*m.scale-wallSize/2, x*m.scale+wallSize/2, wallSize, m.scale-wallSize)
+	case _UP:
+		mazeCanvas.Call("clearRect", y*m.scale+wallSize/2, x*m.scale-wallSize/2, m.scale-wallSize, wallSize)
+	case _RIGHT:
+		mazeCanvas.Call("clearRect", y*m.scale+m.scale-wallSize/2, x*m.scale+wallSize/2, wallSize, m.scale-wallSize)
+	case _DOWN:
+		mazeCanvas.Call("clearRect", y*m.scale+wallSize/2, x*m.scale+m.scale-wallSize/2, m.scale-wallSize, wallSize)
+	}
+}
+
+func (m *maze) fillTextCell(x, y int, s string) {
+	mazeCanvas.Set("font", fmt.Sprintf("%vpx arial", m.scale*3/4))
+	mazeCanvas.Set("textAlign", "left")
+	mazeCanvas.Set("textBaseline", "top")
+	mazeCanvas.Call("fillText", s, y*m.scale+wallSize/2, x*m.scale+m.scale/5)
+	mazeCanvas.Call("fill")
+}
+
+func (m *maze) clearCell(x, y int) {
+	mazeCanvas.Call("clearRect", y*m.scale+wallSize/2, x*m.scale+wallSize/2, m.scale-wallSize, m.scale-wallSize)
 }

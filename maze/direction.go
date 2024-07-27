@@ -6,8 +6,8 @@ type direction int
 
 const (
 	_LEFT direction = iota + 1
-	_RIGHT
 	_UP
+	_RIGHT
 	_DOWN
 )
 

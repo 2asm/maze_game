@@ -1,37 +1,9 @@
 #body2 {
     text-align: center;
-    margin: 20px auto;
-    max-width: 120ch;
+    margin: 10px auto;
     line-height: 1.6;
     font-size: 16px;
     color: #444;
     padding: 0 10px;
     float: center;
-}
-
-table {
-    position: relative;
-    width: fit-content;
-    height: fit-content;
-    border-collapse: collapse;
-    display: inline-block;
-    grid-column-gap: none;
-    margin: 0;
-}
-
-td, tr {
-    text-align: center;
-    margin: 0px;
-    padding: 0px;
-}
-
-.cell {
-    font-size: 2ch;
-    width: 4ch;
-    height: 4ch;
-    text-align: center;
-    background: #ddd;
-    color: transparent;
-    border: 0.1em solid black;
-    margin: 0px;
 }

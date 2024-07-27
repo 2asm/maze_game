@@ -4,11 +4,11 @@ package maze
 
 type mazeRunner struct {
 	pos                  coord
-	emoji, winning_emoji rune
+	emoji, winning_emoji string
 }
 
 func newMazeRunner(c coord) mazeRunner {
-	return mazeRunner{pos: c, emoji: '🧑', winning_emoji: '😀',}
+	return mazeRunner{pos: c, emoji: "🧑", winning_emoji: "🧑‍💻"}
 
 }
 
